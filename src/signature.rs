@@ -1,5 +1,80 @@
-use crate::{DalekSigningKey, DalekVerifyingKey};
 use crate::{Error, InnerError};
+
+/// A record (or data) signature produced by a keypair
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum Signature {
+    /// A digital signature in the ed25519 cryptosystem
+    Ed25519([u8; 64]),
+
+    /// A digital signature in the secp256k1 cryptosystem
+    Secp256k1([u8; 64]),
+}
+
+impl Signature {
+    /// Create from an ed25519 dalek signature
+    #[must_use]
+    pub fn from_ed25519_dalek(sig: ed25519_dalek::Signature) -> Self {
+        Self::Ed25519(sig.to_bytes())
+    }
+
+    /// Try to convert into an ed25519 dalek signature
+    #[must_use]
+    #[allow(clippy::match_wildcard_for_single_variants)]
+    pub fn try_as_ed25519_dalek(&self) -> Option<ed25519_dalek::Signature> {
+        match self {
+            Self::Ed25519(bytes) => Some(ed25519_dalek::Signature::from_bytes(bytes)),
+            _ => None,
+        }
+    }
+
+    /// Create from ed25519 signature bytes
+    #[must_use]
+    pub fn from_ed25519_bytes(sig: [u8; 64]) -> Self {
+        Self::Ed25519(sig)
+    }
+
+    /// Try to convert to the inner ed25519 signature
+    #[must_use]
+    #[allow(clippy::match_wildcard_for_single_variants)]
+    pub fn try_as_ed25519_bytes(&self) -> Option<&[u8; 64]> {
+        match self {
+            Self::Ed25519(sig) => Some(sig),
+            _ => None,
+        }
+    }
+
+    /// Create from an secp256k1 schnorr signature
+    #[must_use]
+    pub fn from_secp256k1_sig(sig: secp256k1::schnorr::Signature) -> Self {
+        Self::Secp256k1(sig.to_byte_array())
+    }
+
+    /// Try to convert into a secp256k1 schnorr signature
+    #[must_use]
+    #[allow(clippy::match_wildcard_for_single_variants)]
+    pub fn try_as_secp256k1_sig(&self) -> Option<secp256k1::schnorr::Signature> {
+        match self {
+            Self::Secp256k1(bytes) => Some(secp256k1::schnorr::Signature::from_byte_array(*bytes)),
+            _ => None,
+        }
+    }
+
+    /// Create from a secp256k1 signature bytes
+    #[must_use]
+    pub fn from_secp256k1_bytes(sig: [u8; 64]) -> Self {
+        Self::Secp256k1(sig)
+    }
+
+    /// Try to tonvert to the inner secp256k1 signature
+    #[must_use]
+    #[allow(clippy::match_wildcard_for_single_variants)]
+    pub fn try_as_secp256k1_bytes(&self) -> Option<&[u8; 64]> {
+        match self {
+            Self::Secp256k1(sig) => Some(sig),
+            _ => None,
+        }
+    }
+}
 
 /// A public signing key representing a server or user,
 /// whether a master key or subkey.
@@ -7,20 +82,20 @@ use crate::{Error, InnerError};
 pub struct PublicKey([u8; 32]);
 
 impl PublicKey {
-    /// To a `DalekVerifyingKey`
+    /// To a `ed25519_dalek::VerifyingKey`
     ///
     /// This unpacks the 32 byte data for cryptographic usage
     #[allow(clippy::missing_panics_doc)]
     #[must_use]
-    pub fn to_verifying_key(&self) -> DalekVerifyingKey {
-        DalekVerifyingKey::from_bytes(&self.0).unwrap()
+    pub fn to_verifying_key(&self) -> ed25519_dalek::VerifyingKey {
+        ed25519_dalek::VerifyingKey::from_bytes(&self.0).unwrap()
     }
 
-    /// From a `DalekVerifyingKey`
+    /// From a `ed25519_dalek::VerifyingKey`
     ///
     /// This packs into 32 byte data
     #[must_use]
-    pub fn from_verifying_key(verifying_key: &DalekVerifyingKey) -> PublicKey {
+    pub fn from_verifying_key(verifying_key: &ed25519_dalek::VerifyingKey) -> PublicKey {
         PublicKey(verifying_key.as_bytes().to_owned())
     }
 
@@ -43,7 +118,7 @@ impl PublicKey {
     /// Will return `Err` if the bytes do not represent a `CompressedEdwardsY`
     /// point on the curve (not all bit sequences do)
     pub fn from_bytes(bytes: &[u8; 32]) -> Result<PublicKey, Error> {
-        let vk = DalekVerifyingKey::from_bytes(bytes)?;
+        let vk = ed25519_dalek::VerifyingKey::from_bytes(bytes)?;
         Ok(Self::from_verifying_key(&vk))
     }
 
@@ -93,19 +168,19 @@ impl std::fmt::Display for PublicKey {
 pub struct SecretKey([u8; 32]);
 
 impl SecretKey {
-    /// To a `DalekSigningKey`
+    /// To a `ed25519_dalek::SigningKey`
     ///
     /// This unpacks the 32 byte data for cryptographic usage
     #[must_use]
-    pub fn to_signing_key(&self) -> DalekSigningKey {
-        DalekSigningKey::from_bytes(&self.0)
+    pub fn to_signing_key(&self) -> ed25519_dalek::SigningKey {
+        ed25519_dalek::SigningKey::from_bytes(&self.0)
     }
 
-    /// From a `DalekSigningKey`
+    /// From a `ed25519_dalek::SigningKey`
     ///
     /// This packs into 32 byte data
     #[must_use]
-    pub fn from_signing_key(signing_key: &DalekSigningKey) -> SecretKey {
+    pub fn from_signing_key(signing_key: &ed25519_dalek::SigningKey) -> SecretKey {
         SecretKey(signing_key.to_bytes())
     }
 
@@ -136,7 +211,7 @@ impl SecretKey {
     /// let secret_key = SecretKey::generate(&mut csprng);
     /// ```
     pub fn generate<R: rand_core::CryptoRngCore + ?Sized>(csprng: &mut R) -> SecretKey {
-        SecretKey(DalekSigningKey::generate(csprng).to_bytes())
+        SecretKey(ed25519_dalek::SigningKey::generate(csprng).to_bytes())
     }
 
     /// Compute the `PublicKey` that matchies this `SecretKey`

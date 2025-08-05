@@ -5,8 +5,8 @@
 //!
 //! Users and Servers are known by their [`PublicKey`] proven by their
 //! [`SecretKey`]. These are 32-byte packed data, and have to be unpacked
-//! into their [`DalekVerifyingKey`] or [`DalekSigningKey`] respectively in
-//! order to do cryptographic operations.
+//! into their [`ed25519_dalek::VerifyingKey`] or [`ed25519_dalek::SigningKey`]
+//! respectively in order to do cryptographic operations.
 //!
 //! # Bootstrap
 //!
@@ -60,10 +60,10 @@ macro_rules! padded_len {
     };
 }
 
-pub use ed25519_dalek::SigningKey as DalekSigningKey;
-pub use ed25519_dalek::VerifyingKey as DalekVerifyingKey;
+pub use ed25519_dalek;
 pub use mainline;
 pub use rand;
+pub use secp256k1;
 
 mod address;
 pub use address::Address;
@@ -81,9 +81,6 @@ mod hash;
 
 mod id;
 pub use id::Id;
-
-mod signature;
-pub use signature::{EncryptedSecretKey, PublicKey, SecretKey};
 
 mod kind;
 pub use kind::Kind;
@@ -105,6 +102,9 @@ pub use reference::Reference;
 
 mod server_bootstrap;
 pub use server_bootstrap::ServerBootstrap;
+
+mod signature;
+pub use signature::{EncryptedSecretKey, PublicKey, SecretKey, Signature};
 
 mod tag;
 pub use tag::{OwnedTag, Tag, TagType};
